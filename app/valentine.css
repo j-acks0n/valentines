@@ -41,7 +41,7 @@
   bottom: -50px;
   font-size: 24px;
   animation: floatUp 8s ease-in-out infinite;
-  opacity: 0.7;
+  opacity: 0; /* Start invisible, animation will fade in */
 }
 
 /* Floating Dog Images */
@@ -54,7 +54,7 @@
     0 0 15px rgba(255, 105, 180, 0.5),
     0 0 30px rgba(255, 20, 147, 0.3);
   border: 3px solid rgba(255, 182, 193, 0.8);
-  opacity: 0.9;
+  /* opacity controlled by animation */
   width: auto !important;
   height: auto !important;
   max-width: 100px;
@@ -770,9 +770,9 @@
   }
 
   .photo-frame {
-    width: 180px;
-    height: 180px;
-    padding: 6px;
+    width: 250px;
+    height: 250px;
+    padding: 8px;
   }
 
   .photo-heart {
