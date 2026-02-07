@@ -14,23 +14,22 @@ import {
   type NewTeamMember,
   type NewActivityLog,
   ActivityType,
-  invitations
+  invitations,
 } from '@/lib/db/schema';
 import { comparePasswords, hashPassword, setSession } from '@/lib/auth/session';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { createCheckoutSession } from '@/lib/payments/stripe';
 import { getUser, getUserWithTeam } from '@/lib/db/queries';
 import {
   validatedAction,
-  validatedActionWithUser
+  validatedActionWithUser,
 } from '@/lib/auth/middleware';
 
 async function logActivity(
   teamId: number | null | undefined,
   userId: number,
   type: ActivityType,
-  ipAddress?: string
+  ipAddress?: string,
 ) {
   if (teamId === null || teamId === undefined) {
     return;
@@ -39,14 +38,14 @@ async function logActivity(
     teamId,
     userId,
     action: type,
-    ipAddress: ipAddress || ''
+    ipAddress: ipAddress || '',
   };
   await db.insert(activityLogs).values(newActivity);
 }
 
 const signInSchema = z.object({
   email: z.string().email().min(3).max(255),
-  password: z.string().min(8).max(100)
+  password: z.string().min(8).max(100),
 });
 
 export const signIn = validatedAction(signInSchema, async (data, formData) => {
@@ -55,7 +54,7 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
   const userWithTeam = await db
     .select({
       user: users,
-      team: teams
+      team: teams,
     })
     .from(users)
     .leftJoin(teamMembers, eq(users.id, teamMembers.userId))
@@ -67,7 +66,7 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
     return {
       error: 'Invalid email or password. Please try again.',
       email,
-      password
+      password,
     };
   }
 
@@ -75,27 +74,21 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
 
   const isPasswordValid = await comparePasswords(
     password,
-    foundUser.passwordHash
+    foundUser.passwordHash,
   );
 
   if (!isPasswordValid) {
     return {
       error: 'Invalid email or password. Please try again.',
       email,
-      password
+      password,
     };
   }
 
   await Promise.all([
     setSession(foundUser),
-    logActivity(foundTeam?.id, foundUser.id, ActivityType.SIGN_IN)
+    logActivity(foundTeam?.id, foundUser.id, ActivityType.SIGN_IN),
   ]);
-
-  const redirectTo = formData.get('redirect') as string | null;
-  if (redirectTo === 'checkout') {
-    const priceId = formData.get('priceId') as string;
-    return createCheckoutSession({ team: foundTeam, priceId });
-  }
 
   redirect('/dashboard');
 });
@@ -103,7 +96,7 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
 const signUpSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
-  inviteId: z.string().optional()
+  inviteId: z.string().optional(),
 });
 
 export const signUp = validatedAction(signUpSchema, async (data, formData) => {
@@ -119,7 +112,7 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
     return {
       error: 'Failed to create user. Please try again.',
       email,
-      password
+      password,
     };
   }
 
@@ -128,7 +121,7 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
   const newUser: NewUser = {
     email,
     passwordHash,
-    role: 'owner' // Default role, will be overridden if there's an invitation
+    role: 'owner', // Default role, will be overridden if there's an invitation
   };
 
   const [createdUser] = await db.insert(users).values(newUser).returning();
@@ -137,7 +130,7 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
     return {
       error: 'Failed to create user. Please try again.',
       email,
-      password
+      password,
     };
   }
 
@@ -154,8 +147,8 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
         and(
           eq(invitations.id, parseInt(inviteId)),
           eq(invitations.email, email),
-          eq(invitations.status, 'pending')
-        )
+          eq(invitations.status, 'pending'),
+        ),
       )
       .limit(1);
 
@@ -181,7 +174,7 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
   } else {
     // Create a new team if there's no invitation
     const newTeam: NewTeam = {
-      name: `${email}'s Team`
+      name: `${email}'s Team`,
     };
 
     [createdTeam] = await db.insert(teams).values(newTeam).returning();
@@ -190,7 +183,7 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
       return {
         error: 'Failed to create team. Please try again.',
         email,
-        password
+        password,
       };
     }
 
@@ -203,20 +196,14 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
   const newTeamMember: NewTeamMember = {
     userId: createdUser.id,
     teamId: teamId,
-    role: userRole
+    role: userRole,
   };
 
   await Promise.all([
     db.insert(teamMembers).values(newTeamMember),
     logActivity(teamId, createdUser.id, ActivityType.SIGN_UP),
-    setSession(createdUser)
+    setSession(createdUser),
   ]);
-
-  const redirectTo = formData.get('redirect') as string | null;
-  if (redirectTo === 'checkout') {
-    const priceId = formData.get('priceId') as string;
-    return createCheckoutSession({ team: createdTeam, priceId });
-  }
 
   redirect('/dashboard');
 });
@@ -231,7 +218,7 @@ export async function signOut() {
 const updatePasswordSchema = z.object({
   currentPassword: z.string().min(8).max(100),
   newPassword: z.string().min(8).max(100),
-  confirmPassword: z.string().min(8).max(100)
+  confirmPassword: z.string().min(8).max(100),
 });
 
 export const updatePassword = validatedActionWithUser(
@@ -241,7 +228,7 @@ export const updatePassword = validatedActionWithUser(
 
     const isPasswordValid = await comparePasswords(
       currentPassword,
-      user.passwordHash
+      user.passwordHash,
     );
 
     if (!isPasswordValid) {
@@ -249,7 +236,7 @@ export const updatePassword = validatedActionWithUser(
         currentPassword,
         newPassword,
         confirmPassword,
-        error: 'Current password is incorrect.'
+        error: 'Current password is incorrect.',
       };
     }
 
@@ -258,7 +245,7 @@ export const updatePassword = validatedActionWithUser(
         currentPassword,
         newPassword,
         confirmPassword,
-        error: 'New password must be different from the current password.'
+        error: 'New password must be different from the current password.',
       };
     }
 
@@ -267,7 +254,7 @@ export const updatePassword = validatedActionWithUser(
         currentPassword,
         newPassword,
         confirmPassword,
-        error: 'New password and confirmation password do not match.'
+        error: 'New password and confirmation password do not match.',
       };
     }
 
@@ -279,17 +266,17 @@ export const updatePassword = validatedActionWithUser(
         .update(users)
         .set({ passwordHash: newPasswordHash })
         .where(eq(users.id, user.id)),
-      logActivity(userWithTeam?.teamId, user.id, ActivityType.UPDATE_PASSWORD)
+      logActivity(userWithTeam?.teamId, user.id, ActivityType.UPDATE_PASSWORD),
     ]);
 
     return {
-      success: 'Password updated successfully.'
+      success: 'Password updated successfully.',
     };
-  }
+  },
 );
 
 const deleteAccountSchema = z.object({
-  password: z.string().min(8).max(100)
+  password: z.string().min(8).max(100),
 });
 
 export const deleteAccount = validatedActionWithUser(
@@ -301,7 +288,7 @@ export const deleteAccount = validatedActionWithUser(
     if (!isPasswordValid) {
       return {
         password,
-        error: 'Incorrect password. Account deletion failed.'
+        error: 'Incorrect password. Account deletion failed.',
       };
     }
 
@@ -310,7 +297,7 @@ export const deleteAccount = validatedActionWithUser(
     await logActivity(
       userWithTeam?.teamId,
       user.id,
-      ActivityType.DELETE_ACCOUNT
+      ActivityType.DELETE_ACCOUNT,
     );
 
     // Soft delete
@@ -318,7 +305,7 @@ export const deleteAccount = validatedActionWithUser(
       .update(users)
       .set({
         deletedAt: sql`CURRENT_TIMESTAMP`,
-        email: sql`CONCAT(email, '-', id, '-deleted')` // Ensure email uniqueness
+        email: sql`CONCAT(email, '-', id, '-deleted')`, // Ensure email uniqueness
       })
       .where(eq(users.id, user.id));
 
@@ -328,19 +315,19 @@ export const deleteAccount = validatedActionWithUser(
         .where(
           and(
             eq(teamMembers.userId, user.id),
-            eq(teamMembers.teamId, userWithTeam.teamId)
-          )
+            eq(teamMembers.teamId, userWithTeam.teamId),
+          ),
         );
     }
 
     (await cookies()).delete('session');
     redirect('/sign-in');
-  }
+  },
 );
 
 const updateAccountSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
-  email: z.string().email('Invalid email address')
+  email: z.string().email('Invalid email address'),
 });
 
 export const updateAccount = validatedActionWithUser(
@@ -351,15 +338,15 @@ export const updateAccount = validatedActionWithUser(
 
     await Promise.all([
       db.update(users).set({ name, email }).where(eq(users.id, user.id)),
-      logActivity(userWithTeam?.teamId, user.id, ActivityType.UPDATE_ACCOUNT)
+      logActivity(userWithTeam?.teamId, user.id, ActivityType.UPDATE_ACCOUNT),
     ]);
 
     return { name, success: 'Account updated successfully.' };
-  }
+  },
 );
 
 const removeTeamMemberSchema = z.object({
-  memberId: z.number()
+  memberId: z.number(),
 });
 
 export const removeTeamMember = validatedActionWithUser(
@@ -377,23 +364,23 @@ export const removeTeamMember = validatedActionWithUser(
       .where(
         and(
           eq(teamMembers.id, memberId),
-          eq(teamMembers.teamId, userWithTeam.teamId)
-        )
+          eq(teamMembers.teamId, userWithTeam.teamId),
+        ),
       );
 
     await logActivity(
       userWithTeam.teamId,
       user.id,
-      ActivityType.REMOVE_TEAM_MEMBER
+      ActivityType.REMOVE_TEAM_MEMBER,
     );
 
     return { success: 'Team member removed successfully' };
-  }
+  },
 );
 
 const inviteTeamMemberSchema = z.object({
   email: z.string().email('Invalid email address'),
-  role: z.enum(['member', 'owner'])
+  role: z.enum(['member', 'owner']),
 });
 
 export const inviteTeamMember = validatedActionWithUser(
@@ -411,7 +398,10 @@ export const inviteTeamMember = validatedActionWithUser(
       .from(users)
       .leftJoin(teamMembers, eq(users.id, teamMembers.userId))
       .where(
-        and(eq(users.email, email), eq(teamMembers.teamId, userWithTeam.teamId))
+        and(
+          eq(users.email, email),
+          eq(teamMembers.teamId, userWithTeam.teamId),
+        ),
       )
       .limit(1);
 
@@ -427,8 +417,8 @@ export const inviteTeamMember = validatedActionWithUser(
         and(
           eq(invitations.email, email),
           eq(invitations.teamId, userWithTeam.teamId),
-          eq(invitations.status, 'pending')
-        )
+          eq(invitations.status, 'pending'),
+        ),
       )
       .limit(1);
 
@@ -442,18 +432,18 @@ export const inviteTeamMember = validatedActionWithUser(
       email,
       role,
       invitedBy: user.id,
-      status: 'pending'
+      status: 'pending',
     });
 
     await logActivity(
       userWithTeam.teamId,
       user.id,
-      ActivityType.INVITE_TEAM_MEMBER
+      ActivityType.INVITE_TEAM_MEMBER,
     );
 
     // TODO: Send invitation email and include ?inviteId={id} to sign-up URL
     // await sendInvitationEmail(email, userWithTeam.team.name, role)
 
     return { success: 'Invitation sent successfully' };
-  }
+  },
 );

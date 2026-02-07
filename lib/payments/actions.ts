@@ -1,15 +1,9 @@
 'use server';
 
-import { redirect } from 'next/navigation';
-import { createCheckoutSession, createCustomerPortalSession } from './stripe';
-import { withTeam } from '@/lib/auth/middleware';
-
-export const checkoutAction = withTeam(async (formData, team) => {
-  const priceId = formData.get('priceId') as string;
-  await createCheckoutSession({ team: team, priceId });
-});
-
-export const customerPortalAction = withTeam(async (_, team) => {
-  const portalSession = await createCustomerPortalSession(team);
-  redirect(portalSession.url);
-});
+/**
+ * Stub action for customer portal - not implemented for this project
+ */
+export async function customerPortalAction() {
+  // No-op: This Valentine's project doesn't use payments
+  console.log('Customer portal action called (not implemented)');
+}
