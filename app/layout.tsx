@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: '💕 Will You Be My Valentine? 💕',
   description: "A special Valentine's Day surprise just for you!",
   icons: {
-    icon: '/images/dog.jpg',
+    icon: '/favicon.png',
   },
 };
 
